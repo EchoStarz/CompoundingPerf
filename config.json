@@ -1,0 +1,45 @@
+{
+  "_comment": "CompoundingPerf — toggle each optimization independently. Telemetry off by default.",
+
+  "Server": {
+    "_ProfileSaveDebouncer_note": "DI override of SaveServer — coalesces save spam, trailing-edge guarantees no state loss. Set Enabled to false to revert to built-in SaveServer behavior.",
+    "ProfileSaveDebouncer": {
+      "Enabled": true
+    },
+    "LogLevelFilter": {
+      "Enabled": true,
+      "MinLevel": "Info",
+      "BlocklistNamespaces": [ "SPTarkov.Server.Core.Routers.*" ]
+    },
+    "_ResponseCache_note": "Caches static-after-load endpoints (item DB, handbook, hideout recipes, globals, etc.). First request per path goes through the normal router chain; subsequent identical requests serve the cached JSON. Per-session endpoints are NOT cached.",
+    "ResponseCache": {
+      "Enabled": true,
+      "AdditionalPaths": []
+    },
+    "_ThreadSafeRandom_note": "DI-overrides SPT's RandomUtil to make its shared Random thread-safe. Pure correctness fix — no behavior change.",
+    "ThreadSafeRandom": {
+      "Enabled": true
+    }
+  },
+
+  "Client": {
+    "HotPathLogSuppressor": {
+      "Enabled": true,
+      "MinLevelInRaid": "Warning",
+      "AllowlistPlugins": [ "me.sol.sain", "SAIN" ]
+    }
+  },
+
+  "Telemetry": {
+    "Enabled": false,
+    "DumpEveryNRaids": 10,
+    "DumpOnRaidEnd": true,
+    "DumpOnServerShutdown": true,
+    "TimingEnabled": false
+  },
+
+  "Compat": {
+    "AutoDisableOnConflict": true,
+    "Verbose": true
+  }
+}
