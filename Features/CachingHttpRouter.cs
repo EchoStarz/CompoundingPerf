@@ -90,8 +90,20 @@ public class CachingHttpRouter : HttpRouter
         }
     }
 
+    // S14 (memoized route dispatch) lived here and was REMOVED before release: routing
+    // through a behavior-mirror of GetResponse/HandleRoute changed the
+    // /launcher/server/connect response under FIKA (raw 0.0.0.0 backendUrl instead of
+    // the rewritten one → the game client cannot connect). The mechanism behind the
+    // rewrite was never fully identified, which is exactly why a feature whose entire
+    // contract is "behavior-identical routing" cannot ship.
+
     public override async ValueTask<string> GetResponse(HttpRequest req, MongoId sessionID, string body)
     {
+        // S11 hook: this override sees every routed request, which makes it the natural
+        // place to track per-session dirtiness for the save-skip feature. Pure-read
+        // paths are filtered inside MarkRequest; everything else flags the session.
+        ProfileDirtyTracker.MarkRequest(sessionID, req.Path.Value);
+
         if (!_enabled || !IsCacheable(req, body))
         {
             return await base.GetResponse(req, sessionID, body);

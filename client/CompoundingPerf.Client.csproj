@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <Authors>EchoStarz</Authors>
     <Product>CompoundingPerf.Client</Product>
     <Description>Client-side Harmony patches for CompoundingPerf — in-raid hot-path log suppressor and raid-state tracking.</Description>
@@ -21,9 +21,17 @@
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
+  <!-- Dev benchmark builds: dotnet build -p:Bench=true compiles in the C6 frame-stats
+       recorder. Release packages are built WITHOUT this flag, so shipped DLLs contain
+       no per-frame recorder at all. -->
+  <PropertyGroup Condition="'$(Bench)' == 'true'">
+    <DefineConstants>$(DefineConstants);BENCH</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Compile-include shared model records from the server project. -->
     <Compile Include="..\Models.cs" Link="Models.cs" />
+    <Compile Include="..\FrameStatsMath.cs" Link="FrameStatsMath.cs" />
   </ItemGroup>
 
   <ItemGroup>

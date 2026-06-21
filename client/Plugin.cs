@@ -1,12 +1,13 @@
 using System;
 using System.IO;
-using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
-using HarmonyLib;
 using CompoundingPerf.Client.Compat;
-using CompoundingPerf.Client.Patches;
 using CompoundingPerf.Client.Telemetry;
+#if BENCH
+using System.Reflection;
+using HarmonyLib;
+#endif
 
 namespace CompoundingPerf.Client;
 
@@ -15,7 +16,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string ModGuid    = "com.echostarz.compoundingperf.client";
     public const string ModName    = "CompoundingPerf.Client";
-    public const string ModVersion = "1.2.1";
+    public const string ModVersion = "1.3.0";
 
     public static CompoundingPerfConfig LoadedConfig { get; private set; } = new();
     public static DetectedMods Mods { get; private set; } = new();
@@ -40,16 +41,25 @@ public class Plugin : BaseUnityPlugin
                 Log.LogInfo($"{ModName} compat scan: SAIN={Mods.HasSain} AILimit={Mods.HasAiLimit} PerfImprovements={Mods.HasPerformanceImprovements} Tyfon={Mods.HasTyfonUIFixes}");
             }
 
-            // Initialize patch-local static state BEFORE PatchAll wires up the prefixes,
-            // so the prefixes never see a partially-constructed allowlist (was a DCL
-            // race in V1.2 — the lazy EnsureInitialized() pattern could publish the
-            // _initialized flag before the field reference was visible on other threads).
-            LogSuppressorPatch.Initialize(LoadedConfig.Client.HotPathLogSuppressor);
+#if BENCH
+            // C6: frame-stats benchmark recorder, the only client feature since the
+            // in-raid log suppressor was removed in 1.3 (its value never survived
+            // measurement, and suppressing other mods' in-raid logs costs the
+            // ecosystem more than it saves). Compiled only into dev builds
+            // (-p:Bench=true); release packages ship NO client plugin at all.
+            // Sampling rides EFT's own GameWorldUnityTickListener via Harmony
+            // postfix — see FrameStatsRecorder doc for why we don't use our own
+            // MonoBehaviour. masterEnabled is still read so each stats line tags
+            // which side of an A/B run it belongs to.
+            FrameStatsRecorder.Enabled = LoadedConfig.Client.FrameStats.Enabled;
+            if (FrameStatsRecorder.Enabled)
+            {
+                Log.LogInfo($"{ModName} [C6/BENCH] frame-stats recorder armed — per-raid FPS stats will append to user/logs/CompoundingPerf-framestats.jsonl");
+            }
 
-            // Apply Harmony patches in this assembly (Patches/ subfolder).
-            // Patches early-exit when their config flag is off.
             var harmony = new Harmony(ModGuid);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+#endif
 
             Log.LogInfo($"{ModName} ready");
         }

@@ -15,7 +15,17 @@ public static class TelemetryHub
 
     public static bool TimingEnabled { get; set; } = false;
 
-    public static void Increment(string key, long by = 1) =>
+    // Cached no-capture delegate: the hot path (by=1) must not allocate. A lambda that
+    // captures `by` allocates a closure per call — on the log-filter drop path that's
+    // an allocation per suppressed line, which would undercut the feature's own point.
+    private static readonly Func<string, long, long> AddOne = static (_, prev) => prev + 1;
+
+    public static void Increment(string key) =>
+        Counters.AddOrUpdate(key, 1L, AddOne);
+
+    /// <summary>Rare path for cumulative adds (sizes, durations). The closure here is
+    /// acceptable — call sites are per-raid or per-dump, not per-message.</summary>
+    public static void Increment(string key, long by) =>
         Counters.AddOrUpdate(key, by, (_, prev) => prev + by);
 
     public static long Get(string key) =>

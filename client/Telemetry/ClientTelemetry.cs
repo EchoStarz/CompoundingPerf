@@ -17,7 +17,14 @@ public static class ClientTelemetry
 
     public static bool TimingEnabled { get; set; } = false;
 
-    public static void Increment(string key, long by = 1) =>
+    // Cached no-capture delegate — the hot path (by=1) must not allocate per call.
+    private static readonly Func<string, long, long> AddOne = (_, prev) => prev + 1;
+
+    public static void Increment(string key) =>
+        Counters.AddOrUpdate(key, 1L, AddOne);
+
+    /// <summary>Rare path for cumulative adds. Closure acceptable — per-raid call sites.</summary>
+    public static void Increment(string key, long by) =>
         Counters.AddOrUpdate(key, by, (_, prev) => prev + by);
 
     public static long Get(string key) =>

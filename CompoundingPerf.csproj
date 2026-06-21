@@ -6,12 +6,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <OutputPath>bin\$(Configuration)\$(ProjectName)\$(AssemblyName)\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
     <!-- Mono-repo: exclude sibling folders from server compile globs. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);client\**;tests\**;scripts\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Dev benchmark builds: dotnet build -p:Bench=true compiles in the server-side
+       bench sampler (GC pauses, feature counters → user/logs JSONL). Release packages
+       are built WITHOUT this flag and contain no sampler. Mirrors the client csproj. -->
+  <PropertyGroup Condition="'$(Bench)' == 'true'">
+    <DefineConstants>$(DefineConstants);BENCH</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

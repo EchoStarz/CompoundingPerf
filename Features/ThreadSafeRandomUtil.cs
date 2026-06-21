@@ -32,7 +32,9 @@ namespace CompoundingPerf.Features;
 /// all other algorithm details are unchanged. Only the concurrent access pattern is
 /// fixed.</para>
 /// </summary>
-[Injectable(TypeOverride = typeof(RandomUtil), TypePriority = 100)]
+// Lifetime must match vanilla RandomUtil ([Injectable(InjectionType.Singleton)]) —
+// Injectable DEFAULTS to Scoped; see CoalescingSaveServer for the failure mode.
+[Injectable(InjectionType.Singleton, TypeOverride = typeof(RandomUtil), TypePriority = 100)]
 public class ThreadSafeRandomUtil : RandomUtil
 {
     // One lock for the type. All concurrent calls to the unsafe-Random methods serialize

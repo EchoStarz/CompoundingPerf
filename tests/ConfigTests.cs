@@ -11,17 +11,12 @@ public class ConfigTests
         var c = new CompoundingPerfConfig();
 
         Assert.True(c.Server.ProfileSaveDebouncer.Enabled);
-
-        Assert.True(c.Server.LogLevelFilter.Enabled);
-        Assert.Equal("Info", c.Server.LogLevelFilter.MinLevel);
-        Assert.Single(c.Server.LogLevelFilter.BlocklistNamespaces);
-
         Assert.True(c.Server.ResponseCache.Enabled);
         Assert.True(c.Server.ThreadSafeRandom.Enabled);
-
-        // SAIN's GUID should be in the suppressor allowlist by default — never silence its logs.
-        // SAIN's actual BepInEx GUID is me.sol.sain (verified via KmyTarkov listing).
-        Assert.Contains("me.sol.sain", c.Client.HotPathLogSuppressor.AllowlistPlugins);
+        Assert.True(c.Server.ResponseSanitizer.Enabled);
+        Assert.True(c.Server.RagfairCalmUpdates.Enabled);
+        Assert.True(c.Server.FastCompression.Enabled);
+        Assert.Equal("Fastest", c.Server.FastCompression.Level);
 
         // Telemetry off by default — opt-in is intentional.
         Assert.False(c.Telemetry.Enabled);
@@ -40,7 +35,7 @@ public class ConfigTests
             },
             Client = new ClientToggles
             {
-                HotPathLogSuppressor = new HotPathLogSuppressorOptions { Enabled = false, MinLevelInRaid = "Info" },
+                FrameStats = new FrameStatsOptions { Enabled = false, WarmupSkipSeconds = 35 },
             },
         };
 
@@ -50,8 +45,8 @@ public class ConfigTests
         Assert.False(roundTripped.Server.ProfileSaveDebouncer.Enabled);
         Assert.False(roundTripped.Server.ResponseCache.Enabled);
         Assert.Contains("/custom/path", roundTripped.Server.ResponseCache.AdditionalPaths);
-        Assert.False(roundTripped.Client.HotPathLogSuppressor.Enabled);
-        Assert.Equal("Info", roundTripped.Client.HotPathLogSuppressor.MinLevelInRaid);
+        Assert.False(roundTripped.Client.FrameStats.Enabled);
+        Assert.Equal(35, roundTripped.Client.FrameStats.WarmupSkipSeconds);
     }
 
     [Fact]
@@ -64,12 +59,14 @@ public class ConfigTests
         Assert.True(File.Exists(path), $"config.json not found at {path}");
 
         var raw = File.ReadAllText(path);
-        var parsed = JsonSerializer.Deserialize<CompoundingPerfConfig>(raw, new JsonSerializerOptions { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+        // STRICT options on purpose: SPT's ModHelper.GetJsonDataFromFile does not allow
+        // trailing commas — a lenient test here once passed a config the live loader
+        // rejected, killing every feature at boot (2026-06-13).
+        var parsed = JsonSerializer.Deserialize<CompoundingPerfConfig>(raw);
         Assert.NotNull(parsed);
         Assert.True(parsed!.Server.ProfileSaveDebouncer.Enabled);
-        Assert.True(parsed.Server.LogLevelFilter.Enabled);
         Assert.True(parsed.Server.ResponseCache.Enabled);
         Assert.True(parsed.Server.ThreadSafeRandom.Enabled);
-        Assert.True(parsed.Client.HotPathLogSuppressor.Enabled);
+        Assert.True(parsed.Client.FrameStats.Enabled);
     }
 }

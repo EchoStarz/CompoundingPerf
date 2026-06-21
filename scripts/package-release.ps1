@@ -5,10 +5,9 @@
 .DESCRIPTION
     Produces `dist/CompoundingPerf-x.y.z.7z` whose internal layout matches what users
     expect when dragging the archive onto `SPT Mods Installer.exe` (or extracting
-    manually over the SPT install root):
+    manually over the SPT install root). Since 1.3 the mod is SERVER-ONLY — no client
+    plugin ships:
 
-        BepInEx/plugins/CompoundingPerf.Client/
-            CompoundingPerf.Client.dll
         SPT/user/mods/CompoundingPerf/
             CompoundingPerf.dll
             config.json
@@ -35,6 +34,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Trim a caller-supplied -Version at the boundary so a stray space can't produce a
+# malformed archive name (the csproj-parsed path is already trimmed below).
+if ($Version) { $Version = $Version.Trim() }
+
 function Step([string]$msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function OK  ([string]$msg) { Write-Host "    $msg" -ForegroundColor Green }
 
@@ -52,7 +55,9 @@ Step 'Building server (Release)'
 if ($LASTEXITCODE -ne 0) { throw 'Server build failed' }
 OK 'server build ok'
 
-Step 'Building client (Release)'
+# Client builds are compile-checked but NOT shipped: since 1.3 the mod is server-only
+# (the in-raid log suppressor was removed; the frame-stats recorder is BENCH-dev-only).
+Step 'Building client (Release, compile check only)'
 & dotnet build (Join-Path $RepoRoot 'client\CompoundingPerf.Client.csproj') -c Release -p:SkipDeploy=true --nologo | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Client build failed' }
 OK 'client build ok'
@@ -66,14 +71,11 @@ OK 'tests pass'
 $stage = Join-Path $RepoRoot 'dist\stage'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 $serverDir = Join-Path $stage 'SPT\user\mods\CompoundingPerf'
-$clientDir = Join-Path $stage 'BepInEx\plugins\CompoundingPerf.Client'
 New-Item -ItemType Directory -Force $serverDir | Out-Null
-New-Item -ItemType Directory -Force $clientDir | Out-Null
 
 Copy-Item (Join-Path $RepoRoot 'bin\Release\CompoundingPerf\CompoundingPerf.dll') $serverDir
 Copy-Item (Join-Path $RepoRoot 'config.json') $serverDir
-Copy-Item (Join-Path $RepoRoot 'client\bin\Release\CompoundingPerf.Client.dll') $clientDir
-OK 'staged'
+OK 'staged (server-only since 1.3)'
 
 # 3. Compress
 $distFile = Join-Path $RepoRoot "dist\CompoundingPerf-$Version.7z"
