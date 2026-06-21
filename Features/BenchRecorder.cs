@@ -1,4 +1,5 @@
 #if BENCH
+using System.Runtime;
 using System.Text.Json;
 using CompoundingPerf.Telemetry;
 using SPTarkov.Server.Core.Models.Utils;
@@ -35,6 +36,9 @@ public static class BenchRecorder
         var logsDir = Path.Combine(Directory.GetCurrentDirectory(), "user", "logs");
         var outFile = Path.Combine(logsDir, "CompoundingPerf-serverstats.jsonl");
         logger.Info($"[CompoundingPerf/BENCH] server sampler armed — GC + counter deltas every {IntervalSec}s to {outFile}");
+        // GC mode is context for the S8 claim: a forced ragfair GC.Collect is a blocking
+        // gen2 — the worst kind — so record which collector/latency mode is live.
+        logger.Info($"[CompoundingPerf/BENCH] GC mode: ServerGC={GCSettings.IsServerGC} LatencyMode={GCSettings.LatencyMode}");
 
         _prev = Snapshot();
         _prevAt = DateTime.UtcNow;
@@ -59,6 +63,8 @@ public static class BenchRecorder
                         intervalSec = Math.Round(delta.IntervalSec, 1),
                         gcPauseMs = Math.Round(delta.GcPauseMs, 1),
                         gcPausePct = Math.Round(delta.GcPausePct, 3),
+                        allocMb = Math.Round(delta.AllocBytes / 1048576.0, 1),
+                        allocMbPerSec = Math.Round(delta.AllocMbPerSec, 1),
                         gen0 = delta.Gen0,
                         gen1 = delta.Gen1,
                         gen2 = delta.Gen2,
@@ -86,6 +92,7 @@ public static class BenchRecorder
     private static BenchCounters Snapshot() => new()
     {
         TotalGcPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,
+        TotalAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true),
         Gen0 = GC.CollectionCount(0),
         Gen1 = GC.CollectionCount(1),
         Gen2 = GC.CollectionCount(2),

@@ -40,6 +40,25 @@ Both tag every line with `masterEnabled`, so a single config flip separates the 
 4. Report: `python scripts/bench-report.py [logsDir]` — groups by map and side,
    excludes non-comparable rows (no warmup trim / older modVersion) and says so.
 
+## Reading the significance verdict
+
+For each client metric the report prints median + mean ± 95% CI per side, a ratio with
+RatioSD, and a verdict from a two-sided Mann-Whitney U test (exact permutation p-value —
+non-parametric, tie-safe, the right test for non-normal multimodal frame data; it's
+BenchmarkDotNet's own default for the same reason). Methodology mined from BDN; stdlib-only
+so anyone can reproduce it.
+
+- **`INSUFFICIENT DATA (n=x/y)`** — gated exactly like BDN: refuses below 3 per side / 5 on
+  one side. This is the *expected, honest* result at 2-3 raids — a prompt to run more, not a bug.
+- **`WITHIN NOISE (p=...)`** — a real test ran; the difference isn't distinguishable from noise.
+- **`detectable but <10% -> SAME IN PRACTICE`** — statistically real but smaller than a 10%
+  median shift; honestly not worth claiming.
+- **`MOD BETTER/WORSE by N% (p<0.05)`** — the only verdict you may publish as proof.
+
+**Sample-size floor (important):** at 3 raids/side the smallest achievable p-value is 0.1
+(2/C(6,3)) — so even a perfect clean sweep can NEVER reach p<0.05 at n=3. Run **4-5 raids per
+side** if you want the tool to be able to certify significance. 4v4 fully separated = p=0.029.
+
 ## Rules learned the hard way
 
 - **Never change the build between sides.** A new feature or fix invalidates the
@@ -47,8 +66,12 @@ Both tag every line with `masterEnabled`, so a single config flip separates the 
 - Boot-only smoke tests exercise neither saves nor MVC request scopes. A bench run
   needs a loaded profile; FIKA API health needs a `curl` against
   `/fika/api/players` with the Bearer key from fika.jsonc.
-- 2-3 raids per side is directional, not proof — claim accordingly. Expected shape:
-  avg FPS ~flat (the mod is server-side), differences live in 1% lows, hitch
-  rates, and server GC pause totals.
+- 2-3 raids per side is directional, not proof — and the report now ENFORCES that
+  ("INSUFFICIENT DATA") rather than relying on you to remember. Run 4-5/side to certify.
+  Expected shape: avg FPS ~flat (the mod is server-side), differences live in 1% lows,
+  hitch rates, and server GC pause totals.
+- The server block's `alloc=MB/s` is the S8 control variable: if allocation rate is ~equal
+  on both sides but gcPause/gen2 drop, the removed forced GC — not "the mod did less work" —
+  is the proven cause. (Old serverstats lines show alloc=0; only post-1.3 BENCH builds emit it.)
 - Worst-frame spikes at the very end of a raid (extract/teardown) are not stalls;
   `maxFrameAtSec` exists precisely to tell them apart.

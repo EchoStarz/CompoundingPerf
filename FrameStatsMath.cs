@@ -44,6 +44,12 @@ public static class FrameStatsMath
         /// end-of-raid teardown, not a mid-raid freeze.</summary>
         public double MaxFrameAtSec         { get; }
     }
+    // NOTE: a Brendan-Gregg m-value multimodality flag was prototyped here (BDN's
+    // heuristic) and CUT — empirically it reads backwards on frame data: a hitch tail
+    // blows out the histogram range so the main mode collapses to one bin (scores
+    // "unimodal"), while clean bell data drowns in fine-bin sampling noise (scores
+    // "multimodal"). Robust percentile-based binning would be needed; not worth it for
+    // an optional warning. Verified before shipping rather than after.
 
     /// <summary>
     /// Compute summary stats over per-frame durations (seconds). Returns null when there

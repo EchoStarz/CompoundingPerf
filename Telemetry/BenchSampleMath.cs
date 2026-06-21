@@ -8,6 +8,7 @@ namespace CompoundingPerf.Telemetry;
 public sealed class BenchCounters
 {
     public double TotalGcPauseMs { get; init; }
+    public long TotalAllocatedBytes { get; init; }
     public int Gen0 { get; init; }
     public int Gen1 { get; init; }
     public int Gen2 { get; init; }
@@ -27,6 +28,8 @@ public sealed class BenchDelta
     public double IntervalSec { get; init; }
     public double GcPauseMs { get; init; }
     public double GcPausePct { get; init; }
+    public long AllocBytes { get; init; }
+    public double AllocMbPerSec { get; init; }
     public int Gen0 { get; init; }
     public int Gen1 { get; init; }
     public int Gen2 { get; init; }
@@ -49,11 +52,14 @@ public static class BenchSampleMath
     public static BenchDelta Delta(BenchCounters prev, BenchCounters cur, double intervalSec)
     {
         var pauseMs = Math.Max(0, cur.TotalGcPauseMs - prev.TotalGcPauseMs);
+        var allocBytes = Math.Max(0, cur.TotalAllocatedBytes - prev.TotalAllocatedBytes);
         return new BenchDelta
         {
             IntervalSec = intervalSec,
             GcPauseMs = pauseMs,
             GcPausePct = intervalSec > 0 ? pauseMs / (intervalSec * 1000.0) * 100.0 : 0,
+            AllocBytes = allocBytes,
+            AllocMbPerSec = intervalSec > 0 ? allocBytes / 1048576.0 / intervalSec : 0,
             Gen0 = Math.Max(0, cur.Gen0 - prev.Gen0),
             Gen1 = Math.Max(0, cur.Gen1 - prev.Gen1),
             Gen2 = Math.Max(0, cur.Gen2 - prev.Gen2),

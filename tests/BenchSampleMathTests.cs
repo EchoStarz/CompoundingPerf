@@ -38,4 +38,26 @@ public class BenchSampleMathTests
         var d = BenchSampleMath.Delta(Counters(0), Counters(100), 0);
         Assert.Equal(0, d.GcPausePct);
     }
+
+    [Fact]
+    public void Allocation_rate_is_bytes_delta_over_interval()
+    {
+        // 100 MB allocated over 30s = ~3.33 MB/s.
+        var prev = new BenchCounters { TotalAllocatedBytes = 1_000_000 };
+        var cur = new BenchCounters { TotalAllocatedBytes = 1_000_000 + 100L * 1048576 };
+        var d = BenchSampleMath.Delta(prev, cur, 30.0);
+
+        Assert.Equal(100L * 1048576, d.AllocBytes);
+        Assert.Equal(100.0 / 30.0, d.AllocMbPerSec, 2);
+    }
+
+    [Fact]
+    public void Allocation_counter_reset_clamps_to_zero()
+    {
+        var prev = new BenchCounters { TotalAllocatedBytes = 5_000_000 };
+        var cur = new BenchCounters { TotalAllocatedBytes = 10_000 };
+        var d = BenchSampleMath.Delta(prev, cur, 30.0);
+        Assert.Equal(0, d.AllocBytes);
+        Assert.Equal(0, d.AllocMbPerSec);
+    }
 }
